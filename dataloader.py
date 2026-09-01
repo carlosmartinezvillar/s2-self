@@ -39,7 +39,7 @@ class TrainTransform:
 
 
 class SentinelDataset(torch.utils.data.Dataset):
-	def __init__(self,chip_dir,n_bands=3,n_labels=2,transform=None):
+	def __init__(self,chip_dir,n_bands=3,n_labels=2,transform=None,boundary=False):
 
 		# GET LIST OF CHIPS/STRINGS
 		self.dir        = chip_dir
@@ -67,6 +67,10 @@ class SentinelDataset(torch.utils.data.Dataset):
 			self.lbl_div = 255
 		if n_labels == 3:
 			self.lbl_div = 127
+
+
+		# WEIGHT MASK -- ADDITIONAL IMAGE FOR LOSS
+		self.boundary = boundary
 
 		# TRANSFORMS ONLY FOR TRAIN SET -- AUGMENTATION
 		self.train_transform = transform
@@ -108,6 +112,13 @@ class SentinelDataset(torch.utils.data.Dataset):
 		return tv_tensors.Mask(lbl)
 
 
+	def load_label_mask(self,idx):
+		msk = v2.functional.pil_to_tensor(Image.open(f'{self.ids[idx]}_MSK.tif'))
+		msk = torch.squeeze(msk,0)
+		msk = msk.to(torch.float32)
+		return msk
+
+
 	def __len__(self):
 		return len(self.ids)
 
@@ -124,4 +135,10 @@ class SentinelDataset(torch.utils.data.Dataset):
 
 		# NORMALIZE & RETURN
 		image = (image - self.mean) / self.std
-		return image,label
+
+		# RETURN 2 (OR 3 IMAGES)
+		if self.boundary:
+			distmap = self.load_label_mask(idx)
+			return image,label,distmap
+		else:
+			return image,label

@@ -1,13 +1,23 @@
 import cv2
 import numpy as np
+import glob
+
 
 def process_label_to_mask():
 
 	pass
 
 
-def process_folder():
+def process_folder(folder_path):
 	pass
+	folder_path = folder_path.rstrip('/')
+	# band_regex = f"{folder_path}/*_B0X.tif"
+	mask_regex = f"{folder_path}/*_LBL.tif"
+	# band_paths = glob.glob(band_regex,root_dir=folder_path)
+	mask_paths = glob.glob(mask_regex,root_dir=folder_path)
+
+	for file in mask_paths:
+		linear_transform(f"{folder_path}/{file}")
 
 
 def three_class_mask():
@@ -64,10 +74,25 @@ def calculate_exponential(normalized_dist):
 
 
 def parse_args():
-	args = None
+
+	# DEFINE AND READ
+	parser = argparse.ArgumentParser()
+	parser.add_argument('--chip-dir',required=True,default=None,help='Dataset (chip) directory.')
+	args = parser.parse_args()
+
+	# CHECK VALUES
+	assert os.path.isdir(args.chip_dir), f"Chip dir {args.chip_dir} not found."
+	args.chip_dir = args.chip_dir.rstrip('/')
+
+	# RETURN
 	return args
 
 
+################################################################################
+# MAIN
+################################################################################
 if __name__ == '__main__':
 
-	pass	
+	args = parse_args()
+	pass
+
