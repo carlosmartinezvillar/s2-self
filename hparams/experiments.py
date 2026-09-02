@@ -39,10 +39,10 @@ def search_lr_and_decay():
 			'lrate':round(lr,5),
 			'decay':round(wd,5),
 			'batch':int(batch),					
-			'vit_layers':2, #base
-			'mlp_ratio':5, #base
-			'cnn_layers':3, #base
-			'channels':ch   #base
+			'vit_layers':2,
+			'mlp_ratio':5, 
+			'cnn_layers':3, 
+			'channels':ch
 		}
 
 		rows.append(sample)

@@ -128,15 +128,15 @@ class CE_and_Boundary(nn.Module):
 	'''
 	Cross-entropy and boundary-weighted loss
 	'''
-	def __init__(self,ce_weight=0.7,bw_weight=0.3):
+	def __init__(self,ce_weight=0.7,bl_weight=0.3):
 		super().__init__()
 		self.ce = CrossEntropyLoss()
 		self.bl = BoundaryLoss()
 		self.ce_weight = ce_weight
-		self.bw_weight = bw_weight
+		self.bl_weight = bl_weight
 
 	def forward(self,logits,targets,distmap):
-		return (self.ce_weight * self.ce(logits, targets)) + (self.bw_weight * self.bl(logits, distmap))
+		return (self.ce_weight * self.ce(logits,targets)) + (self.bl_weight * self.bl(logits,targets,distmap))
 
 
 class CE_and_Dice(nn.Module):
@@ -146,12 +146,37 @@ class CE_and_Dice(nn.Module):
 	def __init__(self,ce_weight=0.5,dice_weight=0.5):
 		super().__init__()
 		self.ce   = CrossEntropyLoss()
-		self.dice = BoundaryLoss()
+		self.dice = DiceLoss()
 		self.ce_w   = ce_weight
 		self.dice_w = dice_weight
 
 	def forward(self,logits,targets,distmap):
 		return (self.ce_w*self.ce(logits, targets)) + (self.dice_w*self.dice(logits,targets))
+
+
+class CE_and_Focal():
+	'''
+	Cross-entropy and Focal combined.
+	'''
+	def __init__(self,ce_weight=0.5,focal_weight=0.5):
+		super().__init__()
+		self.ce = CrossEntropyLoss()
+		self.fl = FocalLoss(gamma=2.0,alpha=None)
+		self.ce_w = ce_weight
+		self.fl_w = focal_weight
+
+	def forward(self,logits,targets,distmap):
+		return (self.ce_w*self.ce(logits, targets)) + (self.fl_w*self.fl(logits,targets))
+
+
+#MISSING
+# class CE_and_Lovasz()
+
+# class Dice_and_Boundary()
+# class Dice_and_Focal()
+# class Dice_and_Lovasz()
+
+# class Focal_and_Boundary()
 
 
 class Focal_and_Lovasz(nn.Module):
@@ -165,3 +190,4 @@ class Focal_and_Lovasz(nn.Module):
 
     def forward(self, logits, targets):
         return (self.focal_w * self.focal(logits, targets)) + (self.lovasz_w * self.lovasz(logits, targets))
+
