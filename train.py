@@ -213,7 +213,7 @@ def load_hyperparameters(args):
 	HP = hp_list_indexed[args.id]
 
 	# LIST OF LOSS FUNCS
-	losses = ["ce","bl","cw","dl","fl","ll","ce_bl","ce_dl"]
+	losses = ["ce","bl","cw","dl","fl","ce_bl","ce_dl"]
 
 	# CHECK DICT
 	try:
@@ -543,9 +543,6 @@ if __name__ == '__main__':
 
 	if HP['loss'] == "fl":
 		loss_fn = losses.FocalLoss(gamma=2.0,alpha=None) 
-
-	if HP['loss'] == "ll":
-		loss_fn = losses.LovaszLoss()
 
 	if HP['loss'] == "bl":
 		loss_fn = losses.BoundaryLoss(alpha=2.0)

@@ -1,5 +1,84 @@
 '''
 All functions implemented follow the form: loss_fn(prediction,target)
+
+
+By TYPE/EMPHASIS:
+
+CE -- pixel (baseline)
+CW -- pixel, class-imbalance
+Dice -- region
+Focal -- pixel,hard-examples
+EW -- boundary
+
+Pixel + Region
+--------------
+CE + Dice -- region
+CW + Dice -- imbalance, priors
+Focal + Dice -- hard-negatives
+
+Pixel
+-------------
+CE + Focal -- hard examples
+CW + Focal
+
+Boundary + Region
+-----------------
+EW + Dice -- spatial weighting, priors
+
+Boundary + Pixel
+----------------
+CE + EW
+CW + EW
+EW + Focal -- harder examples
+
+Px-region-px
+-------------
+CE + Dice + Focal
+CW + Dice + Focal
+
+Px-region-boundary
+------------------
+CE + Dice + EW*
+CW + Dice + EW*
+
+Pixel-pixel-boundary
+--------------------
+CE + Focal + EW
+CW + Focal + EW
+
+L2 = L_px + L_region
+L2 = L_boundary + L_region
+L3 = L_px + L_region + L_boundary ? *
+
+...OR by combination:
+
+1:
+CE
+CW
+Dice
+Focal
+EW
+
+2:
+CE + Dice
+CE + Focal
+CE + EW
+CW + Dice
+CW + Focal
+CW + EW
+Dice + Focal
+Dice + EW
+Focal + EW
+
+
+3:
+CE + Dice + Focal
+CW + Dice + Focal
+CE + Dice + EW
+CW + Dice + EW
+CE + Focal + EW
+CW + Focal + EW
+
 '''
 ############################################################
 # LIBRARIES
@@ -69,45 +148,6 @@ class FocalLoss(nn.Module):
 		return focal_loss.mean()
 
 
-class LovaszLoss(nn.Module):
-    '''
-    Per-Pixel Lovasz-Softmax Loss (Direct mIoU optimization)
-   	'''
-    def __init__(self):
-        super().__init__()
-
-    def _lovasz_grad(self, gt_sorted):
-        p = len(gt_sorted)
-        gts = gt_sorted.sum()
-        intersection = gts - gt_sorted.float().cumsum(0)
-        union = gts + (1.0 - gt_sorted).float().cumsum(0)
-        jaccard = 1.0 - intersection / union
-        if p > 1:
-            jaccard[1:] = jaccard[1:] - jaccard[:-1]
-        return jaccard
-
-    def forward(self, logits, targets):
-        num_classes = logits.shape[1]
-        probs = F.softmax(logits, dim=1)
-
-        probs_flat = probs.permute(0, 2, 3, 1).reshape(-1, num_classes)
-        targets_flat = targets.reshape(-1)
-
-        losses = []
-        for c in range(num_classes):
-            target_c = (targets_flat == c).float()
-            if target_c.sum() == 0:
-                continue
-            prob_c = probs_flat[:, c]
-            errors = (target_c - prob_c).abs()
-            errors_sorted, perm = torch.sort(errors, descending=True)
-            gt_sorted = target_c[perm]
-            grad = self._lovasz_grad(gt_sorted)
-            losses.append(torch.dot(errors_sorted, grad))
-
-        return torch.stack(losses).mean() if len(losses) > 0 else torch.tensor(0.0, device=logits.device)
-
-
 class BoundaryLoss(nn.Module):
 	def __init__(self,alpha=2.0):
 		'''
@@ -124,21 +164,6 @@ class BoundaryLoss(nn.Module):
 ############################################################
 # COMBINED
 ############################################################
-class CE_and_Boundary(nn.Module):
-	'''
-	Cross-entropy and boundary-weighted loss
-	'''
-	def __init__(self,ce_weight=0.7,bl_weight=0.3):
-		super().__init__()
-		self.ce = CrossEntropyLoss()
-		self.bl = BoundaryLoss()
-		self.ce_weight = ce_weight
-		self.bl_weight = bl_weight
-
-	def forward(self,logits,targets,distmap):
-		return (self.ce_weight * self.ce(logits,targets)) + (self.bl_weight * self.bl(logits,targets,distmap))
-
-
 class CE_and_Dice(nn.Module):
 	'''
 	Cross-entropy and dice combined.
@@ -169,25 +194,24 @@ class CE_and_Focal():
 		return (self.ce_w*self.ce(logits, targets)) + (self.fl_w*self.fl(logits,targets))
 
 
-#MISSING
-# class CE_and_Lovasz()
+class CE_and_Boundary(nn.Module):
+	'''
+	Cross-entropy and boundary-weighted loss
+	'''
+	def __init__(self,ce_weight=0.7,bl_weight=0.3):
+		super().__init__()
+		self.ce = CrossEntropyLoss()
+		self.bl = BoundaryLoss()
+		self.ce_weight = ce_weight
+		self.bl_weight = bl_weight
 
+	def forward(self,logits,targets,distmap):
+		return (self.ce_weight * self.ce(logits,targets)) + (self.bl_weight * self.bl(logits,targets,distmap))
+
+
+#MISSING
 # class Dice_and_Boundary()
 # class Dice_and_Focal()
-# class Dice_and_Lovasz()
-
 # class Focal_and_Boundary()
 
-
-class Focal_and_Lovasz(nn.Module):
-    """10. Combined Focal + Lovasz-Softmax Loss"""
-    def __init__(self, focal_weight=0.5, lovasz_weight=0.5, gamma=2.0):
-        super().__init__()
-        self.focal  = FocalLoss(gamma=gamma)
-        self.lovasz = LovaszSoftmaxLoss()
-        self.focal_w  = focal_weight
-        self.lovasz_w = lovasz_weight
-
-    def forward(self, logits, targets):
-        return (self.focal_w * self.focal(logits, targets)) + (self.lovasz_w * self.lovasz(logits, targets))
 

@@ -18,8 +18,8 @@ def search_lr_and_decay():
 	'''
 	learning_rates = np.logspace(-5, -2, num=4)  # [1e-5, 1e-4, 1e-3, 1e-2]
 	decays         = np.logspace(-4, -2, num=3)  # [1e-4, 1e-3, 1e-2]
-	batches        = [16,32,64]
-	channels       = [32,64]
+	batches        = [32]
+	channels       = [16,32,64]
 	losses         = ["ce","ce_dl"]
 
 	# Define search space
@@ -34,7 +34,7 @@ def search_lr_and_decay():
 			'seed':476,
 			'epochs':55,
 			'loss':loss,
-			'bands':3,
+			'bands':4,
 			'labels':2,
 			'lrate':round(lr,5),
 			'decay':round(wd,5),
