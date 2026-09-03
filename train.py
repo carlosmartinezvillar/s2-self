@@ -384,7 +384,7 @@ def train(model,dataloaders,optimizer,loss_fn,scheduler,n_classes):
 
 	scheduler.step()
 
-	# TRAINING METRICS
+	# TRAINING METRICS #<---- change this single copy step in previous level func (pass only gpu_mat (del after return?),loss_sum,sample_sum)
 	loss_tr = (loss_sum_tr/sample_sum_tr).item() #------------------- cpu-gpu sync
 	cpu_mat = gpu_mat_tr.cpu() #------------------------------------- cpu-gpu sync
 	tr_ppv,tr_tpr,tr_acc,tr_iou,tr_dic = calculate_metrics(cpu_mat) # tensors(n_classes,)!

@@ -7,9 +7,6 @@ import numpy as np
 import random
 import copy
 
-def set_seed(seed: int):
-    random.seed(seed)
-    np.random.seed(seed)
 
 def search_lr_and_decay():
 	'''
@@ -61,13 +58,46 @@ def search_lr_and_decay():
 	write_hp_file("hpo_1",rows)
 
 
-def benchmark_losses():
+def search_losses():
 	'''
-	Train best parameter choice for all loss functions across multiple seeds.
+	Train several parameter choices for loss functions.
+	'''
+	# Base
+
+	# Region-pixel
+
+	# Hard-pixel
+
+	# Added distance (2 losses)?
+	pass
+
+
+##### BEST MODELS #####
+def search_dtm_penalty():
+	'''
+	Search the space for the weight w3 of the distance map loss.
+	Uses best result from search_losses().
 	'''
 	pass
 
 
+##### ABLATION #####
+def band_ablation():
+	'''
+	Train a 3-band version to see benefit of RGB+NIR vs RGB-only.
+	'''
+
+	pass
+
+
+def three_classes():
+	'''
+	Train the best setup on a 3-class problem to compare to binary mask results.
+	'''
+	pass
+
+
+##### HELPER FUNC #####
 def write_hp_file(name,rows):
 	# WRITE JSON FILE
 	out_file_path = f"./{name}.json"		
@@ -78,6 +108,12 @@ def write_hp_file(name,rows):
 	print(f"Parameter file written to {out_file_path}")
 
 
+def set_seed(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+
+
+##### MAIN #####
 if __name__ == '__main__':
 	set_seed(476)
 	search_lr_and_decay()

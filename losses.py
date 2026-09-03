@@ -4,80 +4,68 @@ All functions implemented follow the form: loss_fn(prediction,target)
 
 By TYPE/EMPHASIS:
 
-CE -- pixel (baseline)
-CW -- pixel, class-imbalance
-Dice -- region
-Focal -- pixel,hard-examples
-EW -- boundary
-
-Pixel + Region
+1.1 Candidates
 --------------
-CE + Dice -- region
-CW + Dice -- imbalance, priors
-Focal + Dice -- hard-negatives
+CE    -- pixel (baseline)
+CW    -- pixel, class-imbalance
+Focal -- pixel, hard-examples
+Dice  -- region
+EW    -- boundary (baseline?)
 
-Pixel
--------------
-CE + Focal -- hard examples
-CW + Focal
+1.2 Pixel + Region
+------------------
+CE + Dice
+CW + Dice    -- imbalance prior
+Focal + Dice -- hard-pixels
 
-Boundary + Region
------------------
-EW + Dice -- spatial weighting, priors
-
-Boundary + Pixel
-----------------
+2. Explicit Boundary Added
+---------------------------
+EW + Dice
 CE + EW
 CW + EW
-EW + Focal -- harder examples
+EW + Focal -- harder examples, could be best?
 
-Px-region-px
--------------
-CE + Dice + Focal
-CW + Dice + Focal
+3. Combined
+-----------
+For 3-way combinations:
+L3 = L_px + L_region + L_boundary (KEEP CONVEX! w1+w2+w3=1.0)
 
-Px-region-boundary
-------------------
-CE + Dice + EW*
-CW + Dice + EW*
+CE + Dice + EW
+CW + Dice + EW
+Focal + Dice + EW
 
-Pixel-pixel-boundary
---------------------
-CE + Focal + EW
-CW + Focal + EW
-
-L2 = L_px + L_region
-L2 = L_boundary + L_region
-L3 = L_px + L_region + L_boundary ? *
-
-...OR by combination:
+...OR by EACH combination:
 
 1:
+--
 CE
 CW
 Dice
-Focal
+Focal > check gamma
 EW
 
 2:
-CE + Dice
-CE + Focal
-CE + EW
-CW + Dice
-CW + Focal
-CW + EW
-Dice + Focal
-Dice + EW
-Focal + EW
+--
+CE + Dice 					> sweep w1,w2 (5-10? regression?)
+CE + Focal -- redundant
+CE + EW 					> sweep w1,w2
+CW + Dice 					> sweep w1,w2 
+CW + Focal -- redundant
+CW + EW 					> sweep w1,w2 5?
+Dice + Focal                > sweep gamma & w1,w2
+Dice + EW 					> sweep w1,w2
+Focal + EW 					
 
 
 3:
-CE + Dice + Focal
-CW + Dice + Focal
-CE + Dice + EW
-CW + Dice + EW
-CE + Focal + EW
-CW + Focal + EW
+--
+CE + Dice + Focal -- redundant
+CW + Dice + Focal -- redundant
+CE + Dice + EW 					> sweep w3 only? 5-10 values?
+CW + Dice + EW 					> same
+CE + Focal + EW --redundant
+CW + Focal + EW --redundant
+Focal + Dice + EW 				> same
 
 '''
 ############################################################
@@ -180,21 +168,6 @@ class CE_and_Dice(nn.Module):
 
 	def forward(self,logits,targets):
 		return (self.ce_w*self.ce(logits,targets)) + (self.dice_w*self.dice(logits,targets))
-
-
-class CE_and_Focal():
-	'''
-	Cross-entropy and Focal combined.
-	'''
-	def __init__(self,ce_weight=0.5,focal_weight=0.5):
-		super().__init__()
-		self.ce = CrossEntropyLoss()
-		self.fl = FocalLoss(gamma=2.0,alpha=None)
-		self.ce_w = ce_weight
-		self.fl_w = focal_weight
-
-	def forward(self,logits,targets,distmap):
-		return (self.ce_w*self.ce(logits, targets)) + (self.fl_w*self.fl(logits,targets))
 
 
 class CE_and_Boundary(nn.Module):
