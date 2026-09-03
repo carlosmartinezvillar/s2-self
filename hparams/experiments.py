@@ -16,6 +16,13 @@ def search_lr_and_decay():
 	Search the hyperparameter space of learning rate, weight decay,
 	batch size, and droput rate.
 	'''
+
+	# RANDOMIZE?
+	# n_trials = 30
+	# lrate = 10**np.random.uniform(-5,-2,size=n_trials)
+	# decay = 10**np.random.uniform(-4,-2,size=n_trials)
+
+	#GRID
 	learning_rates = np.logspace(-5, -2, num=4)  # [1e-5, 1e-4, 1e-3, 1e-2]
 	decays         = np.logspace(-4, -2, num=3)  # [1e-4, 1e-3, 1e-2]
 	batches        = [32]
@@ -42,7 +49,10 @@ def search_lr_and_decay():
 			'vit_layers':2,
 			'mlp_ratio':5, 
 			'cnn_layers':3, 
-			'channels':ch
+			'channels':ch,
+			'w0':0.5,
+			'w1':0.5,
+			'w2':0.0
 		}
 
 		rows.append(sample)

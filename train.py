@@ -234,6 +234,7 @@ def load_hyperparameters(args):
 		assert HP['vit_layers'] in [1,2], f"Incorrect # of ViT layers {HP['vit_layers']} in hyperparameters."
 		assert HP['channels'] in [16,32,48,64], f"Incorrect # of channels {HP['channels']} in hyperparameters."
 		assert HP['mlp_ratio'] in [4,5], f"Incorrect mlp dimension {HP['mlp_ratio']} in hyperparameters."
+		# assert HP['w0']+HP['w1']+HP['w2'] = 1.0, f"Incorrect weights given for loss combo."
 
 	except AssertionError as e:
 		print(f"hparams file:  {args.params}")
@@ -242,6 +243,10 @@ def load_hyperparameters(args):
 		raise e
 
 	return HP
+
+
+def print_hyperparameters():
+	pass
 
 
 def format_stdout_metrics(prefix, loss, acc, iou, dice, n_classes):
@@ -552,11 +557,11 @@ if __name__ == '__main__':
 		boundary = True
 
 	if HP['loss'] == "ce_bl":
-		loss_fn = losses.CE_and_Boundary(cw_weight=0.7,bl_weight=0.3) #Adjust to search
+		loss_fn = losses.CE_and_Boundary(cw_weight=HP['w0'],bl_weight=HP['w1']) #Adjust to search
 		boundary = True
 
 	if HP['loss'] == "ce_dl":
-		loss_fn = losses.CE_and_Dice(ce_weight=0.5,dice_weight=0.5)
+		loss_fn = losses.CE_and_Dice(ce_weight=HP['w0'],dice_weight=HP['w1'])
 
 
 	# OPTIMIZER
