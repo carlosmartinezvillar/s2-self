@@ -178,8 +178,8 @@ class CE_and_Dice(nn.Module):
 		self.ce_w   = ce_weight
 		self.dice_w = dice_weight
 
-	def forward(self,logits,targets,distmap):
-		return (self.ce_w*self.ce(logits, targets)) + (self.dice_w*self.dice(logits,targets))
+	def forward(self,logits,targets):
+		return (self.ce_w*self.ce(logits,targets)) + (self.dice_w*self.dice(logits,targets))
 
 
 class CE_and_Focal():
