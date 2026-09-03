@@ -38,8 +38,9 @@ class ConvBlock(nn.Module):
 			))
 
 	def forward(self,x):
+		out = x
 		for layer in self.block:
-			out = layer(x)
+			out = layer(out)
 		return x + out
 
 
@@ -228,19 +229,24 @@ class ViTDecoder(nn.Module):
 		return dec_5
 
 
+
 class UNet(nn.Module):
 
-	def __init__(self,model_id,in_channels=3,out_labels=2,cnn_layers=3,vit_layers=2,channels=32,mlp_ratio=5)
-
+	def __init__(self, model_id, in_channels=3, out_labels=2, cnn_layers=3, vit_layers=2, channels=32, mlp_ratio=5):
 		super().__init__()
 
-		self.model_name = "unet_vit_vit"
+		self.model_name = "UNet"
 		self.model_id = model_id
 
-		self.in_layer = nn.Conv2d(in_channels,channels,3,1,1,bias=True)
-		self.encoder  = ViTEncoder(cnn_layers,vit_layers,channels,mlp_ratio)
-		self.decoder  = ViTDecoder(cnn_layers,vit_layers,channels,mlp_ratio)
+		# input projection
+		self.in_layer = nn.Conv2d(in_channels, channels, 3, 1, 1, bias=True)
 
+		# encoder / decoder
+		self.encoder = ViTEncoder(cnn_layers, vit_layers, channels, mlp_ratio)
+		self.decoder = ViTDecoder(cnn_layers, vit_layers, channels, mlp_ratio)
+
+		# final 1x1 classifier
+		self.out_layer = nn.Conv2d(channels, out_labels, kernel_size=1, bias=True)
 
 	def forward(self,x):
 		x             = self.in_layer(x)
