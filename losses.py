@@ -88,6 +88,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+
 ############################################################
 # LOSS FUNCTIONS -- INDIVIDUAL
 ############################################################
@@ -99,7 +100,7 @@ class CrossEntropyLoss(nn.Module):
 		super().__init__()
 		self.criterion = nn.CrossEntropyLoss()
 
-    def forward(self, logits, targets):
+	def forward(self, logits, targets):
 		return self.criterion(logits, targets)
 
 
@@ -109,7 +110,7 @@ class WeightedCrossEntropyLoss(nn.Module):
 	'''
 	def __init__(self, class_weights=None):
 		super().__init__()
-	self.criterion = nn.CrossEntropyLoss(weight=class_weights)
+		self.criterion = nn.CrossEntropyLoss(weight=class_weights)
 
 	def forward(self, logits, targets):
 		return self.criterion(logits, targets)
@@ -131,7 +132,7 @@ class DiceLoss(nn.Module):
 		cardinality = torch.sum(probs**2 + targets_one_hot**2, dim=dims)
 
 		dice_per_class = (2.0 * intersection + self.smooth) / (cardinality + self.smooth)
-	    return 1.0 - torch.mean(dice_per_class)
+		return 1.0 - torch.mean(dice_per_class)
 
 
 class FocalLoss(nn.Module):
@@ -149,15 +150,17 @@ class FocalLoss(nn.Module):
 
 
 class BoundaryLoss(nn.Module):
-	def __init__(self,alpha=2.0):
-		'''
-		Checking 0.1-0.3
-		'''
+	def __init__(self, alpha=2.0):
+		"""Boundary-weighted loss; expects a distance map as additional input. Checking 0.1-0.3 alpha."""
 		super().__init__()
 		self.alpha = alpha
 
-	def forward(self,logits,targets,distmap):
-		probs = F.softmax(logits,dim=1)
+	def forward(self, logits, targets, distmap):
+		probs = F.softmax(logits, dim=1)
+		# distmap expected shape: [B, H, W] or [B, C, H, W] broadcastable to probs
+		# use class-1 probability as boundary weight if single-channel distmap
+		if distmap.dim() == 3:
+			distmap = distmap.unsqueeze(1)
 		return torch.mean(probs * distmap)
 
 
@@ -213,5 +216,4 @@ class CE_and_Boundary(nn.Module):
 # class Dice_and_Boundary()
 # class Dice_and_Focal()
 # class Focal_and_Boundary()
-
 

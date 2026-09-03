@@ -1,4 +1,5 @@
 import os
+import random
 import numpy as np
 import torch
 import time
@@ -34,10 +35,10 @@ def parse_args():
 
 	# OPTIONAL
 	optional = parser.add_argument_group('Optional arguments')
-	optional.add_argument('--workers',required=False,type=int,default=4,
+	optional.add_argument('--workers',required=False,type=int,default=8,
 		help='Sets num_workers for training and validation dataloaders.')
 	optional.add_argument('--gpu',required=False,type=int,default=0,
-		help='Override default GPU id of 0.')
+		help='Override default GPU id (default: 0).')
 
 	# LOAD 
 	args = parser.parse_args()
@@ -219,7 +220,7 @@ def load_hyperparameters(args):
 	try:
 		# CHECK INPUTS,OUTPUTS
 		assert HP['bands'] in [3,4], f"Incorrect band nr {HP['bands']} in hyperparameters"
-		assert HP['labels'] in  [2,3] f"Incorrect # of classes {HP['labels']} in hyperparameters"
+		assert HP['labels'] in [2,3], f"Incorrect # of classes {HP['labels']} in hyperparameters"
 
 		#CHECK CLASS NAME MATCHES models.py
 		model_classes = [name for name,obj in inspect.getmembers(models,inspect.isclass)]
@@ -231,8 +232,8 @@ def load_hyperparameters(args):
 		# CHECK MODEL SIZE PARAMS
 		assert HP['cnn_layers'] in [2,3], f"Incorrect # of conv layers {HP['cnn_layers']} in hyperparameters."
 		assert HP['vit_layers'] in [1,2], f"Incorrect # of ViT layers {HP['vit_layers']} in hyperparameters."
-		assert HP['channels'] in [16,32,64], f"Incorrect # of channels {HP['channels']} in hyperparameters."
-		assert HP['mlp_ratio'] in [2,3,4,5], f"Incorrect mlp dimension {HP['mlp_ratio']} in hyperparameters."
+		assert HP['channels'] in [16,32,48,64], f"Incorrect # of channels {HP['channels']} in hyperparameters."
+		assert HP['mlp_ratio'] in [4,5], f"Incorrect mlp dimension {HP['mlp_ratio']} in hyperparameters."
 
 	except AssertionError as e:
 		print(f"hparams file:  {args.params}")
@@ -292,7 +293,8 @@ def train_with_boundaries(model,dataloaders,optimizer,loss_fn,scheduler,epochs,n
 		T = T.detach()
 		update_confusion_matrix(gpu_mat_tr,T,Y,n_classes)
 
-	schduler.step()
+	scheduler.step()
+
 
 	# TRAINING METRICS
 	loss_tr = (loss_sum_tr/sample_sum_tr).item() #------------------- cpu-gpu sync
@@ -375,13 +377,13 @@ def train(model,dataloaders,optimizer,loss_fn,scheduler,n_classes):
 		T = T.detach()
 		update_confusion_matrix(gpu_mat_tr,T,Y,n_classes)
 
-	schduler.step()
+	scheduler.step()
 
 	# TRAINING METRICS
 	loss_tr = (loss_sum_tr/sample_sum_tr).item() #------------------- cpu-gpu sync
 	cpu_mat = gpu_mat_tr.cpu() #------------------------------------- cpu-gpu sync
 	tr_ppv,tr_tpr,tr_acc,tr_iou,tr_dic = calculate_metrics(cpu_mat) # tensors(n_classes,)!
-	print(format_stdout_metrics('T',loss_tr,tr_acc,tr_iou,tr_dic,n_classes))
+	print(format_stdout_metrics('T',loss_tr,tr_acc,tr_iou,tr_dic,n_classes),flush=True)
 	return {'tloss':loss_tr, 'tacc':tr_acc, 'ttpr':tr_tpr,'tppv':tr_ppv,'tiou':tr_iou,'tdic':tr_dic}
 
 
@@ -418,7 +420,7 @@ def validate(model,dataloaders,loss_fn,n_classes):
 	loss_va = (loss_sum_va / sample_sum_va).item() #----------------cpu-gpu sync
 	cpu_mat = gpu_mat_va.cpu() #------------------------------------cpu-gpu sync
 	va_ppv,va_tpr,va_acc,va_iou,va_dic = calculate_metrics(cpu_mat)
-	print(format_stdout_metrics('V',loss_va,va_acc,va_iou,va_dic,n_classes))
+	print(format_stdout_metrics('V',loss_va,va_acc,va_iou,va_dic,n_classes),flush=True)
 	return {'vloss': loss_va,'vacc': va_acc,'vtpr': va_tpr,'vppv':va_ppv,'viou':va_iou,'vdic':va_dic}
 
 
@@ -466,7 +468,7 @@ def train_and_validate(model,dataloaders,optimizer,loss_fn,scheduler,epochs,boun
 		############################################################
 		# EPOCH TIME
 		epoch_time = time.perf_counter() - epoch_start_time
-		print(f'\nEpoch time: {epoch_time:.2f}s')
+		print(f'\nEpoch time: {epoch_time:.2f}s',flush=True)
 
 		# LOG THIS EPOCH RESULTS
 		tr_results.update(va_results)
@@ -499,10 +501,10 @@ def train_and_validate(model,dataloaders,optimizer,loss_fn,scheduler,epochs,boun
 	############################################################
 	mem_gb = torch.cuda.max_memory_allocated() / (1024 ** 3)
 	print(f'\nBest validation IoU:    {best_iou:.5f} -- Epoch {best_iou_epoch}')
-	print(f'\nBest validation Dice:    {best_dice:.5f} -- Epoch {best_dice_epoch}')
+	print(f'Best validation Dice:    {best_dice:.5f} -- Epoch {best_dice_epoch}')
 	print(f'Epochs saved: {recent_best_iou.epochs()} (iou)')
 	print(f'Epochs saved: {recent_best_dice.epochs()} (dice)')	
-	print(f"Peak GPU memory allocated: {mem_gb:.2f} GB")
+	print(f'Peak GPU memory allocated: {mem_gb:.2f} GB')
 
 
 ####################################################################################################
@@ -527,9 +529,10 @@ if __name__ == '__main__':
 	model = getattr(models,HP['model'])
 	net = model(HP['id'],HP['bands'],HP['labels'],HP['cnn_layers'],HP['vit_layers'],HP['channels'],HP['mlp_ratio'])
 	net = net.to(CUDA_DEV)
+	net = torch.compile(net)
 
 
-	# LOSSES
+	# LOSS FUNCTION
 	boundary = False
 	if HP['loss'] == "ce":
 		loss_fn = losses.CrossEntropyLoss()
@@ -567,13 +570,13 @@ if __name__ == '__main__':
 		n_bands=HP['bands'],
 		n_labels=HP['labels'],
 		transform=train_transform,
-		boundary)
+		boundary=boundary)
 
 	va_dataset = dataloader.SentinelDataset(f"{DATA_DIR}/validation",
 		n_bands=HP['bands'],
 		n_labels=HP['labels'],
 		transform=None,
-		boundary)
+		boundary=boundary)
 
 	dataloaders = {
 		'training': torch.utils.data.DataLoader(
@@ -583,7 +586,8 @@ if __name__ == '__main__':
 			shuffle=True,
 			num_workers=N_WORKERS,
 			pin_memory=True,
-			prefetch_factor=8),
+			prefetch_factor=4,
+			persistent_workers=True),
 		'validation': torch.utils.data.DataLoader(
 			va_dataset,
 			batch_size=HP['batch'],
@@ -591,7 +595,8 @@ if __name__ == '__main__':
 			shuffle=False,
 			num_workers=N_WORKERS,
 			pin_memory=True,
-			prefetch_factor=8)
+			prefetch_factor=4,
+			persistent_workers=True)
 	}
 
 
@@ -624,7 +629,6 @@ if __name__ == '__main__':
 		loss_fn,
 		scheduler,
 		HP['epochs'],
-		HP['labels'],
 		boundary,
 		n_classes=HP['labels']
 	)
