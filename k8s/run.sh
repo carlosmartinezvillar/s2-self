@@ -26,7 +26,8 @@ MODEL_OUT_DIR="${MODEL_PVC}/${RUN_NAME}"
 LOG_OUT_DIR="${LOG_PVC}/${RUN_NAME}"
 
 DONE_MARKER="${LOG_OUT_DIR}/model_${MODEL_ID}.done"
-STDOUT_LOG="${LOG_DIR}/model_${MODEL_ID}_stdout.log"
+FAIL_MARKER="${LOG_OUT_DIR}/model_${MODEL_ID}.failed"
+STDOUT_LOG="${LOG_OUT_DIR}/model_${MODEL_ID}_stdout.log"
 
 mkdir -p "$MODEL_OUT_DIR" "$LOG_OUT_DIR"
 
@@ -39,6 +40,19 @@ unzip -q "${CACHE_DIR}/${DATA_ZIP_NAME}" -d "$CACHE_DIR"
 mkdir -p "$NET_DIR" "$LOG_DIR"
 cd "$REPO_DIR"
 
+on_exit() {
+  status=$?
+  if [ "$status" -eq 0 ]; then
+    cp -v "${NET_DIR}"/*.pth.tar "$MODEL_OUT_DIR/" 2>/dev/null || true
+    cp -v "${LOG_DIR}"/*.tsv "$LOG_OUT_DIR/" 2>/dev/null || true
+    touch "$DONE_MARKER"
+  else
+    touch "$FAIL_MARKER"
+  fi
+  exit "$status"
+}
+trap on_exit EXIT
+
 python3 -u train.py \
   --data-dir "$DATA_DIR" \
   --net-dir "$NET_DIR" \
@@ -46,8 +60,3 @@ python3 -u train.py \
   --workers "$WORKERS" \
   --params "$PARAMS_FILE" \
   --id "$MODEL_ID" 2>&1 | tee "$STDOUT_LOG"
-
-cp -v "${NET_DIR}"/*.pth.tar "$MODEL_OUT_DIR/"
-cp -v "${LOG_DIR}"/*.tsv "$LOG_OUT_DIR/"
-cp -v "$STDOUT_LOG" "$LOG_OUT_DIR/"
-touch "$DONE_MARKER"
