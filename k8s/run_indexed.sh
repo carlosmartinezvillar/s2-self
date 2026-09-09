@@ -5,6 +5,7 @@ set -euo pipefail #exit !=0 if something breaks
 : "${RUN_NAME:?Set RUN_NAME env var, e.g. hpo_1}"
 : "${WORKERS:?Set WORKERS env var}"
 MODEL_ID="$JOB_COMPLETION_INDEX"
+MODEL_ID_PADDED=$(printf "%03d" "$MODEL_ID")
 
 # ---- CONFIG/EDIT HERE ----
 
@@ -29,8 +30,8 @@ PARAMS_FILE="./hparams/${RUN_NAME}.json"
 MODEL_OUT_DIR="${MODEL_PVC}/${RUN_NAME}"
 LOG_OUT_DIR="${LOG_PVC}/${RUN_NAME}"
 
-DONE_MARKER="${LOG_OUT_DIR}/model_${MODEL_ID}.done"
-STDOUT_LOG="${LOG_DIR}/model_${MODEL_ID}_stdout.log"
+DONE_MARKER="${LOG_OUT_DIR}/model_${MODEL_ID_PADDED}.done"
+STDOUT_LOG="${LOG_DIR}/model_${MODEL_ID_PADDED}_stdout.log"
 
 # ---- SKIP IF ALREADY TRAINED ----
 if [ -f "$DONE_MARKER" ]; then
