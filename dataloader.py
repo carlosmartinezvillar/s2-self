@@ -5,6 +5,7 @@ from PIL import Image
 import torchvision.transforms as v1
 import torchvision.transforms.v2 as v2
 import glob
+import os
 
 ################################################################################
 # CLASSES
@@ -39,7 +40,7 @@ class TrainTransform:
 
 
 class SentinelDataset(torch.utils.data.Dataset):
-	def __init__(self,chip_dir,n_bands=3,n_labels=2,transform=None,boundary=False):
+	def __init__(self,chip_dir,n_bands=3,n_labels=2,transform=None,mask_dir=None):
 
 		# GET LIST OF CHIPS/STRINGS
 		self.dir        = chip_dir
@@ -70,7 +71,9 @@ class SentinelDataset(torch.utils.data.Dataset):
 
 
 		# WEIGHT MASK -- ADDITIONAL IMAGE FOR LOSS
-		self.boundary = boundary
+		self.boundary = mask_dir is not None
+		if mask_dir is not None:
+			self.mask_dir = mask_dir.rstrip('/')
 
 		# TRANSFORMS ONLY FOR TRAIN SET -- AUGMENTATION
 		self.train_transform = transform
@@ -113,7 +116,8 @@ class SentinelDataset(torch.utils.data.Dataset):
 
 
 	def load_label_mask(self,idx):
-		msk = v2.functional.pil_to_tensor(Image.open(f'{self.ids[idx]}_MSK.tif'))
+		basename = os.path.basename(self.ids[idx])
+		msk = v2.functional.pil_to_tensor(Image.open(f'{self.mask_dir}/{basename}_MSK.tif'))
 		msk = torch.squeeze(msk,0)
 		msk = msk.to(torch.float32)
 		return msk
