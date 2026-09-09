@@ -214,7 +214,7 @@ def load_hyperparameters(args):
 	HP = hp_list_indexed[args.id]
 
 	# LIST OF LOSS FUNCS
-	losses = ["ce","bl","cw","dl","fl","ce_bl","ce_dl"]
+	losses = ["ce","bl","cw","dl","fl","ce_dl","cw_dl","fl_dl","ce_bl","cw_bl","fl_bl","ce_dl_bl","cw_dl_bl","fl_dl_bl"]
 
 	# CHECK DICT
 	try:
@@ -234,7 +234,8 @@ def load_hyperparameters(args):
 		assert HP['vit_layers'] in [1,2], f"Incorrect # of ViT layers {HP['vit_layers']} in hyperparameters."
 		assert HP['channels'] in [16,32,48,64], f"Incorrect # of channels {HP['channels']} in hyperparameters."
 		assert HP['mlp_ratio'] in [4,5], f"Incorrect mlp dimension {HP['mlp_ratio']} in hyperparameters."
-		# assert HP['w0']+HP['w1']+HP['w2'] = 1.0, f"Incorrect weights given for loss combo."
+		assert HP['w0']+HP['w1']+HP['w2'] = 1.0, f"Incorrect weights given for loss combo."
+		# assert HP['focal_gamma'] <= 3.0 and HP['focal_gamma'] >= 0.0, f"Incorrect range for focal loss' gamma parameter"
 
 	except AssertionError as e:
 		print(f"hparams file:  {args.params}")
@@ -537,7 +538,7 @@ if __name__ == '__main__':
 	net = torch.compile(net)
 
 
-	# LOSS FUNCTION
+	# LOSS FUNCTION(S)
 	boundary = False
 	if HP['loss'] == "ce":
 		loss_fn = losses.CrossEntropyLoss()
@@ -550,22 +551,55 @@ if __name__ == '__main__':
 		loss_fn = losses.DiceLoss()
 
 	if HP['loss'] == "fl":
-		loss_fn = losses.FocalLoss(gamma=2.0,alpha=None) 
+		loss_fn = losses.FocalLoss(gamma=HP['focal_gamma'],alpha=None) 
 
 	if HP['loss'] == "bl":
-		loss_fn = losses.BoundaryLoss(alpha=2.0)
-		boundary = True
-
-	if HP['loss'] == "ce_bl":
-		loss_fn = losses.CE_and_Boundary(cw_weight=HP['w0'],bl_weight=HP['w1']) #Adjust to search
+		loss_fn = losses.BoundaryLoss()
 		boundary = True
 
 	if HP['loss'] == "ce_dl":
 		loss_fn = losses.CE_and_Dice(ce_weight=HP['w0'],dice_weight=HP['w1'])
 
+	if HP['loss'] == "cw_dl":
+		class_weights = torch.tensor([0.47,0.53],device=CUDA_DEV)
+		loss_fn = losses.CE_and_Dice(ce_weight=HP['w0'],dice_weight=HP['w1'],class_weights=class_weights)
+
+	if HP['loss'] == "fl_dl":
+		loss_fn = losses.Focal_and_Dice(fl_weight=HP['w0'],dice_weight=HP['w1'])
+
+	if HP['loss'] == "ce_bl":
+		loss_fn = losses.CE_and_Boundary(ce_weight=HP['w0'],bl_weight=HP['w1'])
+		boundary = True
+
+	if HP['loss'] == "cw_bl":
+		class_weights = torch.tensor([0.47,0.53],device=CUDA_DEV)		
+		loss_fn = losses.CE_and_Boundary(ce_weight=HP['w0'],bl_weight=HP['w1'],class_weights=class_weights)
+		boundary = True
+
+	if HP['loss'] == "fl_bl":
+		loss_fn = losses.Focal_and_Boundary(focal_weight=HP['w0'],bl_weight=HP['w1'],gamma=HP['focal_gamma'])
+		boundary = True
+
+	if HP['loss'] == "dl_bl":
+		loss_fn = losses.Dice_and_Boundary(dice_weight=HP['w0'],bl_weight=HP['w1'])
+		boundary = True
+
+	if HP['loss'] == "ce_dl_bl":
+		loss_fn = losses.CEConvexLoss(ce_weight=HP['w0'],dice_weight=HP['w1'],bl_weight=HP['w2'])
+		boundary = True
+
+	if HP['loss'] == "cw_dl_bl":
+		class_weights = torch.tensor([0.47,0.53],device=CUDA_DEV)
+		loss_fn = losses.CEConvexLoss(ce_weight=HP['w0'],dice_weight=HP['w1'],bl_weight=HP['w2'],class_weights=class_weights)
+		boundary = True
+
+	if HP['loss'] == "fl_dl_bl":
+		loss_fn = losses.FocalConvexLoss(focal_weight=HP['w0'],dice_weight=HP['w1'],bl_weight=HP['w2'],gamma=HP['focal_gamma'])
+		boundary = True
+
 
 	# OPTIMIZER
-	optimizer = torch.optim.AdamW(net.parameters(),lr=HP['lrate'],weight_decay=HP["decay"])
+	optimizer = torch.optim.AdamW(net.parameters(),lr=HP['lrate'],weight_decay=HP['decay'])
 
 
 	# DATA LOADING

@@ -82,7 +82,7 @@ import numpy as np
 ############################################################
 class CrossEntropyLoss(nn.Module):
 	'''
-	Base for consistency in imports.
+	Base CE copy for consistency in imports.
 	'''
 	def __init__(self):
 		super().__init__()
@@ -138,10 +138,12 @@ class FocalLoss(nn.Module):
 
 
 class BoundaryLoss(nn.Module):
+	'''
+	Boundary-weighted loss; expects a distance map as additional input.
+	'''
 	def __init__(self, alpha=2.0):
-		"""Boundary-weighted loss; expects a distance map as additional input. Checking 0.1-0.3 alpha."""
 		super().__init__()
-		self.alpha = alpha
+		self.alpha = alpha #additional damping term needed?
 
 	def forward(self, logits, targets, distmap):
 		probs = F.softmax(logits, dim=1)
@@ -159,9 +161,9 @@ class CE_and_Dice(nn.Module):
 	'''
 	Cross-entropy and dice combined.
 	'''
-	def __init__(self,ce_weight=0.5,dice_weight=0.5):
+	def __init__(self,ce_weight=0.5,dice_weight=0.5,class_weights=None):
 		super().__init__()
-		self.ce   = CrossEntropyLoss()
+		self.ce   = CrossEntropyLoss(weight=class_weights)
 		self.dice = DiceLoss()
 		self.ce_w   = ce_weight
 		self.dice_w = dice_weight
@@ -170,13 +172,30 @@ class CE_and_Dice(nn.Module):
 		return (self.ce_w*self.ce(logits,targets)) + (self.dice_w*self.dice(logits,targets))
 
 
+class Focal_and_Dice(nn.Module):
+	'''
+	Focal and dice loss combined.
+	'''
+	def __init__(self,focal_weight=0.5,dice_weight=0.5,gamma=2.0,alpha=None):
+		super().__init__()
+		self.focal_w = focal_weight 
+		self.dice_w  = dice_weight
+		self.focal = FocalLoss(gamma=gamma,alpha=alpha)
+		self.dice  = DiceLoss()
+
+	def forward(self,logits,targets):
+		return (self.focal_w*self.focal(logits,targets)) + (self.dice_w*self.dice(logits,targets))		
+
+############################################################
+# COMBINED BOUNDARY
+############################################################
 class CE_and_Boundary(nn.Module):
 	'''
-	Cross-entropy and boundary-weighted loss
+	Cross-entropy (and class-weighted CE) and boundary-weighted loss combined.
 	'''
-	def __init__(self,ce_weight=0.7,bl_weight=0.3):
+	def __init__(self,ce_weight=0.7,bl_weight=0.3,class_weights=None):
 		super().__init__()
-		self.ce = CrossEntropyLoss()
+		self.ce = CrossEntropyLoss(weight=class_weights)
 		self.bl = BoundaryLoss()
 		self.ce_weight = ce_weight
 		self.bl_weight = bl_weight
@@ -185,8 +204,74 @@ class CE_and_Boundary(nn.Module):
 		return (self.ce_weight * self.ce(logits,targets)) + (self.bl_weight * self.bl(logits,targets,distmap))
 
 
-#MISSING
-# class Dice_and_Boundary()
-# class Dice_and_Focal()
-# class Focal_and_Boundary()
+class Dice_and_Boundary(nn.Module):
+	'''
+	Dice and boundary-weighted loss combined.
+	'''
+	def __init__(self,dice_weight=0.7,bl_weight=0.3):
+		super().__init__()
+		self.dice_w = dice_weight
+		self.bl_w   = bl_weight
+		self.dice = DiceLoss()
+		self.bl   = BoundaryLoss()
 
+	def forward(self,logits,targets,distmap):
+		return (self.dice_w*self.dice(logits,targets)) + (self.bl_w*self.bl(logits,targets,distmap))
+
+
+class Focal_and_Boundary(nn.Module):
+	'''
+	Focal and boundary-weighted loss combined.
+	'''
+	def __init__(self,focal_weight=0.7,bl_weight=0.3,gamma=2.0,alpha=None):
+		super().__init__()
+		self.focal_w = focal_weight
+		self.bl_w    = bl_weight
+		self.focal = FocalLoss(gamma=gamma,alpha=alpha)
+		self.bl    = BoundaryLoss()
+
+	def forward(self,logits,targets,distmap):
+		return (self.focal_w*self.focal(logits,targets)) + (self.bl_w*self.bl(logits,targets,distmap))
+
+
+class CEConvexLoss(nn.Module):
+	'''
+	A class combining three losses s.t.:
+	Loss = w0*L_px + w1*L_region + w2*L_boundary, and w0+w1+w2 = 1.0
+	'''
+	def __init__(self,ce_weight=0.45,dice_weight=0.45,bl_weight=0.1,class_weights=None):
+		self.c_w = ce_weight
+		self.d_w = dice_weight
+		self.b_w = bl_weight
+		self.ce   = CrossEntropyLoss(weights=class_weights)
+		self.dice = DiceLoss()
+		self.bl   = BoundaryLoss()		
+
+	def forward(self,logits,targets,distmap):
+		return (
+			self.c_w*self.ce(logits,targets)
+			+ self.d_w*self.dice(logits,targets)
+			+ self.b_w*self.bl(logits,targets,distmap)
+		)
+
+
+class FocalConvexLoss(nn.Module):
+	'''
+	A class combining three losses s.t.:
+	Loss = w0*L_px + w1*L_region + w2*L_boundary, and w0+w1+w2 = 1.0
+	'''
+	def __init__(self,focal_weight=0.45,dice_weight=0.45,bl_weight=0.1,gamma=2.0,alpha=None):
+		super().__init__()
+		self.f_w = focal_weight
+		self.d_w = dice_weight
+		self.b_w = bl_weight
+		self.focal = FocalLoss(gamma=gamma,alpha=alpha)
+		self.dice  = DiceLoss()
+		self.bl    = BoundaryLoss()
+
+	def forward(self,logits,targets,distmap):
+		return (
+			self.f_w*self.focal(logits,targets)
+			+ self.d_w*self.dice(logits,targets)
+			+ self.b_w*self.bl(logits,targets,distmap)
+		)

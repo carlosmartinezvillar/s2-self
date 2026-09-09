@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 import glob
-
+import argparse
+import os
 
 def process_label_to_mask():
 
@@ -39,39 +40,40 @@ def linear_transform(img_path):
 	img = cv2.bitwise_not(img)
 
 	# LINEAR TRANSFORM
-	# _, binary_img = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY) #don't need
-	dist_transform = cv2.distanceTransform(img, dist_type, mask_type)
-	dist_normalized = cv2.normalize(dist_transform,None,0,255,cv2.NORM_MINMAX,dtype=cv2.CV_8U)
-	# normalized_dist = np.zeros(raw_dist.shape, dtype=np.float32)
-	# cv2.normalize(raw_dist, normalized_dist, 0.0, 1.0, cv2.NORM_MINMAX) # 0-1 ? 
+	dist_transform = cv2.distanceTransform(img, dist_type,mask_size)
+	# dist_normalized = cv2.normalize(dist_transform,None,0,255,cv2.NORM_MINMAX,dtype=cv2.CV_8U)
+	dist_normalized = np.zeros(dist_transform.shape, dtype=np.float32)
+	cv2.normalize(dist_transform, dist_normalized, 0.0, 1.0, cv2.NORM_MINMAX) # 0-1 ? 
 
 	# PLOT TO CHECK
-	cv2.imshow('Original Binary',img)
-	cv2.imshow('Distance Transform',dist_normalized)
+	# cv2.imshow('Original Binary',img)
+	cv2.imshow('Linear Transform',dist_normalized)
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
-
+	return dist_normalized
 
 def calculate_exponential(normalized_dist):
-	alpha = 5.0 #try multiple
+	# alpha = 10.0 #try multiple
 	# alpha = 2.0
 	# alpha = 10.0
 	# alpha = 1.0 #linear
 
 	# EXP TO BOUNDARY
-	exp_dist = (np.exp(alpha * normalized_dist) - 1) / (np.exp(alpha) - 1)
-	exp_dist = exp_dist.astype(np.float32)
+	# exp_dist = (np.exp(alpha * normalized_dist) - 1) / (np.exp(alpha) - 1)
+	# exp_dist = exp_dist.astype(np.float32)
 
 	# OR SIGMOID? -- need two sided
-	# k  = 20.0 #edge drop
-	# d0 = 0.15 #shift
-	# exp_dist = 1/(1+np.exp(-k * (normalized_dist - d0)))
-	# exp_dist = np.clip(exp_dist,0.0,1.0).astype(np.float32)
+	k  = 20.0 #edge drop
+	d0 = 0.1 #shift
+	exp_dist = 1/(1+np.exp(-k * (normalized_dist - d0)))
+	exp_dist = np.clip(exp_dist,0.0,1.0).astype(np.float32)
 
 	# PLT TO CHECK
 	display = (exp_dist * 255).astype(np.uint8)
-	cv2.imwrite('exp_dist_map.png',display)
-
+	# cv2.imwrite('exp_dist_map.png',display)
+	cv2.imshow('Exp Distance Transform',display)
+	cv2.waitKey(0)
+	cv2.destroyAllWindows()
 
 def parse_args():
 
@@ -94,5 +96,11 @@ def parse_args():
 if __name__ == '__main__':
 
 	args = parse_args()
+
+	labels = sorted(glob.glob(f"{args.chip_dir}/validation/*_LBL.tif"))
+	print(labels[0])
+
+	# linear_transform(labels[0])
+	calculate_exponential(linear_transform(labels[0]))
 	pass
 
