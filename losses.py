@@ -84,9 +84,9 @@ class CrossEntropyLoss(nn.Module):
 	'''
 	Base CE copy for consistency in imports.
 	'''
-	def __init__(self):
+	def __init__(self,class_weights=None):
 		super().__init__()
-		self.criterion = nn.CrossEntropyLoss()
+		self.criterion = nn.CrossEntropyLoss(weight=class_weights)
 
 	def forward(self, logits, targets):
 		return self.criterion(logits, targets)

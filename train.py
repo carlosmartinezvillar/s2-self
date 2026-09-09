@@ -39,6 +39,8 @@ def parse_args():
 		help='Sets num_workers for training and validation dataloaders.')
 	optional.add_argument('--gpu',required=False,type=int,default=0,
 		help='Override default GPU id (default: 0).')
+	optional.add_argument('--masks',required=False,default=None,
+		help='Dir with additional 3-class and spatial weight masks')
 
 	# LOAD 
 	args = parser.parse_args()
@@ -544,8 +546,8 @@ if __name__ == '__main__':
 		loss_fn = losses.CrossEntropyLoss()
 
 	if HP['loss'] == "cw": # <- Not needed? positive class ~47%
-		class_weights = torch.tensor([0.47,0.53],device=CUDA_DEV)
-		loss_fn = losses.WeightedCrossEntropyLoss(class_weights=class_weights)
+		class_weights = torch.tensor([1/0.47/2,1/0.53/2],device=CUDA_DEV)
+		loss_fn = losses.CrossEntropyLoss(class_weights=class_weights)
 
 	if HP['loss'] == "dl":
 		loss_fn = losses.DiceLoss()
@@ -561,7 +563,7 @@ if __name__ == '__main__':
 		loss_fn = losses.CE_and_Dice(ce_weight=HP['w0'],dice_weight=HP['w1'])
 
 	if HP['loss'] == "cw_dl":
-		class_weights = torch.tensor([0.47,0.53],device=CUDA_DEV)
+		class_weights = torch.tensor([1/0.47/2,1/0.53/2],device=CUDA_DEV)
 		loss_fn = losses.CE_and_Dice(ce_weight=HP['w0'],dice_weight=HP['w1'],class_weights=class_weights)
 
 	if HP['loss'] == "fl_dl":
@@ -572,7 +574,7 @@ if __name__ == '__main__':
 		boundary = True
 
 	if HP['loss'] == "cw_bl":
-		class_weights = torch.tensor([0.47,0.53],device=CUDA_DEV)		
+		class_weights = torch.tensor([1/0.47/2,1/0.53/2],device=CUDA_DEV)		
 		loss_fn = losses.CE_and_Boundary(ce_weight=HP['w0'],bl_weight=HP['w1'],class_weights=class_weights)
 		boundary = True
 
@@ -589,7 +591,7 @@ if __name__ == '__main__':
 		boundary = True
 
 	if HP['loss'] == "cw_dl_bl":
-		class_weights = torch.tensor([0.47,0.53],device=CUDA_DEV)
+		class_weights = torch.tensor([1/0.47/2,1/0.53/2],device=CUDA_DEV)
 		loss_fn = losses.CEConvexLoss(ce_weight=HP['w0'],dice_weight=HP['w1'],bl_weight=HP['w2'],class_weights=class_weights)
 		boundary = True
 
@@ -605,17 +607,25 @@ if __name__ == '__main__':
 	# DATA LOADING
 	train_transform = dataloader.TrainTransform()
 
+	mask_dir_tr = None
+	mask_dir_va = None
+	if boundary:
+		assert args.masks is not None, "Using a boundary loss but not mask dir was given."
+		assert os.path.isdir(args.masks), f"Additional mask dir not found in {args.masks}"
+		mask_dir_tr = f"{args.masks.rstrip('/')}/training"
+		mask_dir_va = f"{args.masks.rstrip('/')}/validation"
+
 	tr_dataset = dataloader.SentinelDataset(f"{DATA_DIR}/training",
 		n_bands=HP['bands'],
 		n_labels=HP['labels'],
 		transform=train_transform,
-		boundary=boundary)
+		mask_dir=mask_dir_tr)
 
 	va_dataset = dataloader.SentinelDataset(f"{DATA_DIR}/validation",
 		n_bands=HP['bands'],
 		n_labels=HP['labels'],
 		transform=None,
-		boundary=boundary)
+		mask_dir=mask_dir_va)
 
 	dataloaders = {
 		'training': torch.utils.data.DataLoader(
