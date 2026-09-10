@@ -236,7 +236,7 @@ def load_hyperparameters(args):
 		assert HP['vit_layers'] in [1,2], f"Incorrect # of ViT layers {HP['vit_layers']} in hyperparameters."
 		assert HP['channels'] in [16,32,48,64], f"Incorrect # of channels {HP['channels']} in hyperparameters."
 		assert HP['mlp_ratio'] in [4,5], f"Incorrect mlp dimension {HP['mlp_ratio']} in hyperparameters."
-		assert HP['w0']+HP['w1']+HP['w2'] = 1.0, f"Incorrect weights given for loss combo."
+		assert HP['w0']+HP['w1']+HP['w2'] <= 1.0, f"Incorrect weights given for loss combo."
 		# assert HP['focal_gamma'] <= 3.0 and HP['focal_gamma'] >= 0.0, f"Incorrect range for focal loss' gamma parameter"
 
 	except AssertionError as e:
