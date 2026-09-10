@@ -67,5 +67,5 @@ python3 -u train.py \
   --log-dir "$LOG_DIR" \
   --workers "$WORKERS" \
   --params "$PARAMS_FILE" \
-  --masks "$MASK_DIR"
+  --masks "$MASK_DIR" \
   --id "$MODEL_ID" 2>&1 | tee "$STDOUT_LOG"
