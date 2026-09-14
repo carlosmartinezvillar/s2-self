@@ -265,7 +265,7 @@ def format_stdout_metrics(prefix, loss, acc, iou, dice, n_classes):
 ####################################################################################################
 # TRAIN
 ####################################################################################################
-def train_with_boundaries(model,dataloaders,optimizer,loss_fn,scheduler,epochs,n_classes):
+def train_with_boundaries(model,dataloaders,optimizer,loss_fn,scheduler,n_classes):
 
 	# COUNTERS (in GPU)
 	gpu_mat_tr    = torch.zeros((n_classes,n_classes),device=CUDA_DEV,dtype=torch.int64) 
