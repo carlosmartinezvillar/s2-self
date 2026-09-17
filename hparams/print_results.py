@@ -129,7 +129,40 @@ def get_best_results_hpo_2(log_dir):
 	with open('./hpo_2.json','r') as fp:
 		hp_list = [json.loads(line) for line in fp.readlines() if line != "\n"]
 	indexed_hp_list = {row['id']:row for row in hp_list}
-	pass
+
+	# GET SCORES
+	model_ids = [row['id'] for row in hp_list]
+	scores    = []
+	for experiment in model_ids:
+		log_file = f"{log_dir}/hpo_2/epochs_{experiment:03}.tsv"
+		scores.append(get_model_best_epoch(log_file))
+
+	# METRICS TO CHOOSE
+	ious = [s['iou'] for s in scores]
+	dice = [s['dic'] for s in scores]
+
+	# SORT
+	sorted_ious = sorted(enumerate(ious),key=lambda x: x[1],reverse=True)
+	sorted_dice = sorted(enumerate(dice),key=lambda x: x[1],reverse=True)
+	sorted_ious_idxs = [_[0] for _ in sorted_ious]
+	sorted_dice_idxs = [_[0] for _ in sorted_dice]
+
+	# PRINT
+	for i in sorted_ious_idxs:
+
+		result  = scores[i]
+		hparams = indexed_hp_list[int(result['id'])]
+
+		line_buffer = []
+		line_buffer.append(f"id: {result['id']:03}")
+		line_buffer.append(f"iou: {result['iou'][0]:.5f} (ep. {result['iou'][1]:02})")
+		line_buffer.append(f"dice: {result['dic'][0]:.5f} (ep. {result['dic'][1]:02})")
+		# line_buffer.append(f"lrate: {hparams['lrate']:<6}")
+		# line_buffer.append(f"decay: {hparams['decay']:<6}")
+		# line_buffer.append(f"channels: {hparams['channels']:<3}")
+		line_buffer.append(f"loss: {hparams['loss']}")
+
+		print(' | '.join(line_buffer))
 
 
 def get_best_results_hpo_3(log_dir):

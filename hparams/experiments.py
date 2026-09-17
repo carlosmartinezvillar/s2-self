@@ -206,7 +206,7 @@ def search_distance_penalty():
 	decay = 0.001
 	batch = 32
 	channels = 64
-	gamma = 1.0
+	gamma = 1.0 #<-- hpo_2
 
 	boundary_loss_weights   = [0.05,0.1,0.2,0.3,0.5]
 	boundary_loss_functions = ["ce_bl","cw_bl","fl_bl","dl_bl"] #with params found by hpo2
@@ -236,7 +236,7 @@ def search_distance_penalty():
 			'w0':remaining_weight,
 			'w1':b_weight,
 			'w2':0.0,
-			'focal_gamma':0.0
+			'focal_gamma':gamma
 		}
 
 		if loss == 'fl_bl':

@@ -567,7 +567,7 @@ if __name__ == '__main__':
 		loss_fn = losses.CE_and_Dice(ce_weight=HP['w0'],dice_weight=HP['w1'],class_weights=class_weights)
 
 	if HP['loss'] == "fl_dl":
-		loss_fn = losses.Focal_and_Dice(fl_weight=HP['w0'],dice_weight=HP['w1'])
+		loss_fn = losses.Focal_and_Dice(focal_weight=HP['w0'],dice_weight=HP['w1'])
 
 	if HP['loss'] == "ce_bl":
 		loss_fn = losses.CE_and_Boundary(ce_weight=HP['w0'],bl_weight=HP['w1'])
