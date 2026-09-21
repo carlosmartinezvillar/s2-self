@@ -33,7 +33,8 @@ LOG_OUT_DIR="${LOG_PVC}/${RUN_NAME}"
 
 DONE_MARKER="${LOG_OUT_DIR}/model_${MODEL_ID_PADDED}.done"
 FAIL_MARKER="${LOG_OUT_DIR}/model_${MODEL_ID_PADDED}.failed"
-STDOUT_LOG="${LOG_OUT_DIR}/model_${MODEL_ID_PADDED}_stdout.log"
+STDOUT_LOG_LOCAL="${LOG_DIR}/model_${MODEL_ID_PADDED}_stdout.log"
+STDOUT_LOG_PVC="${LOG_OUT_DIR}/model_${MODEL_ID_PADDED}_stdout.log"
 
 mkdir -p "$MODEL_OUT_DIR" "$LOG_OUT_DIR"
 
@@ -48,8 +49,18 @@ unzip -q "${CACHE_DIR}/${MASK_ZIP_NAME}" -d "$CACHE_DIR"
 mkdir -p "$NET_DIR" "$LOG_DIR"
 cd "$REPO_DIR"
 
+# MIRROR STDOUT TO THE PVC IN THE BACKGROUND -- tee writes to local disk only,
+# so the training loop never blocks on network I/O; this process copies new
+# lines over to the PVC as they appear, keeping crash logs visible without
+# the per-print latency hit.
+touch "$STDOUT_LOG_LOCAL"
+tail -F "$STDOUT_LOG_LOCAL" >> "$STDOUT_LOG_PVC" &
+TAIL_PID=$!
+
 on_exit() {
   status=$?
+  kill "$TAIL_PID" 2>/dev/null || true
+  cp "$STDOUT_LOG_LOCAL" "$STDOUT_LOG_PVC" 2>/dev/null || true
   if [ "$status" -eq 0 ]; then
     cp -v "${NET_DIR}"/*.pth.tar "$MODEL_OUT_DIR/" 2>/dev/null || true
     cp -v "${LOG_DIR}"/*.tsv "$LOG_OUT_DIR/" 2>/dev/null || true
@@ -68,4 +79,4 @@ python3 -u train.py \
   --workers "$WORKERS" \
   --params "$PARAMS_FILE" \
   --masks "$MASK_DIR" \
-  --id "$MODEL_ID" 2>&1 | tee "$STDOUT_LOG"
+  --id "$MODEL_ID" 2>&1 | tee "$STDOUT_LOG_LOCAL"
