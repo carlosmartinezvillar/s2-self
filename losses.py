@@ -163,7 +163,7 @@ class CE_and_Dice(nn.Module):
 	'''
 	def __init__(self,ce_weight=0.5,dice_weight=0.5,class_weights=None):
 		super().__init__()
-		self.ce   = CrossEntropyLoss(weight=class_weights)
+		self.ce   = nn.CrossEntropyLoss(weight=class_weights)
 		self.dice = DiceLoss()
 		self.ce_w   = ce_weight
 		self.dice_w = dice_weight
@@ -195,7 +195,7 @@ class CE_and_Boundary(nn.Module):
 	'''
 	def __init__(self,ce_weight=0.7,bl_weight=0.3,class_weights=None):
 		super().__init__()
-		self.ce = CrossEntropyLoss(weight=class_weights)
+		self.ce = nn.CrossEntropyLoss(weight=class_weights)
 		self.bl = BoundaryLoss()
 		self.ce_weight = ce_weight
 		self.bl_weight = bl_weight
@@ -244,7 +244,7 @@ class CEConvexLoss(nn.Module):
 		self.c_w = ce_weight
 		self.d_w = dice_weight
 		self.b_w = bl_weight
-		self.ce   = CrossEntropyLoss(weights=class_weights)
+		self.ce   = nn.CrossEntropyLoss(weights=class_weights)
 		self.dice = DiceLoss()
 		self.bl   = BoundaryLoss()		
 
