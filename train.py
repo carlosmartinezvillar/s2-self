@@ -216,7 +216,7 @@ def load_hyperparameters(args):
 	HP = hp_list_indexed[args.id]
 
 	# LIST OF LOSS FUNCS
-	losses = ["ce","bl","cw","dl","fl","ce_dl","cw_dl","fl_dl","ce_bl","cw_bl","fl_bl","ce_dl_bl","cw_dl_bl","fl_dl_bl"]
+	losses = ["ce","bl","cw","dl","fl","ce_dl","cw_dl","fl_dl","ce_bl","cw_bl","fl_bl","dl_bl","ce_dl_bl","cw_dl_bl","fl_dl_bl"]
 
 	# CHECK DICT
 	try:
@@ -446,6 +446,15 @@ def train_and_validate(model,dataloaders,optimizer,loss_fn,scheduler,epochs,boun
 	recent_best_iou = RecentBestTracker(n=3)
 	recent_best_dice = RecentBestTracker(n=3)
 
+	if boundary:
+		train_fn = train_with_boundaries
+		valid_fn = validate_with_boundaries
+	else:
+		train_fn = train
+		valid_fn = validate
+
+
+
 	for epoch in range(epochs):
 
 		# STDOUT
@@ -458,19 +467,13 @@ def train_and_validate(model,dataloaders,optimizer,loss_fn,scheduler,epochs,boun
 		############################################################
 		# TRAINING
 		############################################################
-		if boundary:
-			tr_results = train_with_boundaries(model,dataloaders,optimizer,loss_fn,scheduler,n_classes)
-		else:
-			tr_results = train(model,dataloaders,optimizer,loss_fn,scheduler,n_classes)
-		
+		tr_results = train_fn(model,dataloaders,optimizer,loss_fn,scheduler,n_classes)
+	
 		############################################################
 		# VALIDATION
 		############################################################
-		if boundary:
-			va_results = validate_with_boundaries(model,dataloaders,loss_fn,n_classes)
-		else:
-			va_results = validate(model,dataloaders,loss_fn,n_classes)
-
+		va_results = valid_fn(model,dataloaders,loss_fn,n_classes)
+	
 		############################################################
 		# LOG EPOCH
 		############################################################

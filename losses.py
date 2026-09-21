@@ -240,6 +240,7 @@ class CEConvexLoss(nn.Module):
 	Loss = w0*L_px + w1*L_region + w2*L_boundary, and w0+w1+w2 = 1.0
 	'''
 	def __init__(self,ce_weight=0.45,dice_weight=0.45,bl_weight=0.1,class_weights=None):
+		super().__init__()
 		self.c_w = ce_weight
 		self.d_w = dice_weight
 		self.b_w = bl_weight
